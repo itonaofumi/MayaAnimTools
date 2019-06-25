@@ -62,7 +62,8 @@ def copyAnimation():
              'inTangentType':[], 'outTangentType':[],
              'inTangentX':[], 'inTangentY':[],
              'outTangentX':[],'outTangentY':[],
-             'tangentLock':[], 'weightLock':[]}
+             'tangentLock':[], 'weightLock':[],
+             'breakdown':[]}
 
         for j in range(animCurve.numKeys):
             d['times'].append(animCurve.input(j).value)
@@ -78,6 +79,7 @@ def copyAnimation():
             d['outTangentY'].append(3 * ret[1] * math.sin(ret[0].value))
             d['tangentLock'].append(animCurve.tangentsLocked(j))
             d['weightLock'].append(animCurve.weightsLocked(j))
+            d['breakdown'].append(animCurve.isBreakdown(j))
 
         animData['animData'][-1]['keyData'] = d
 
@@ -128,8 +130,8 @@ def pasteAnimation():
         # キー情報を一気に流し込む
         animCurve.addKeysWithTangents(curveData['keyData']['times'],
             curveData['keyData']['values'],
-            oma.MFnAnimCurve.kTangentGlobal,
-            oma.MFnAnimCurve.kTangentGlobal,
+            oma.MFnAnimCurve.kTangentAuto,
+            oma.MFnAnimCurve.kTangentAuto,
             curveData['keyData']['inTangentType'],
             curveData['keyData']['outTangentType'],
             curveData['keyData']['inTangentX'],
@@ -138,6 +140,17 @@ def pasteAnimation():
             curveData['keyData']['outTangentY'],
             curveData['keyData']['tangentLock'],
             curveData['keyData']['weightLock'])
+
+        # addKeysWithTangents()では個別のタンジェントタイプが反映されないので、
+        # キー毎にタンジェントを設定。ついでにisBreakdownもセットする。
+        for i in range(len(curveData['keyData']['times'])):
+            inT = curveData['keyData']['inTangentType'][i]
+            outT = curveData['keyData']['outTangentType'][i]
+            breakdown = curveData['keyData']['breakdown'][i]
+
+            animCurve.setInTangentType(i, inT)
+            animCurve.setOutTangentType(i, outT)
+            animCurve.setIsBreakdown(i, breakdown)
 
         # クリップボードアイテムに登録する
         clipboardItem = oma.MAnimCurveClipboardItem()
