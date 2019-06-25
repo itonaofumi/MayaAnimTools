@@ -6,8 +6,15 @@ import maya.api.OpenMayaAnim as oma
 
 import json
 import math
+import time
 
-def copyClipboard():
+
+def copyAnimation():
+    '''選択されたオブジェクトのアニメーションをクリップボードにコピーし、
+    一時ファイルに書き出す。
+    時間の選択はタイムスライダーで行う。
+    時間を選択していない場合はカレントフレームが対象。
+    '''
     selectedItems = mc.ls(selection=True, long=True)
 
     # タイムスライダーで選択されている時間を取得
@@ -20,7 +27,6 @@ def copyClipboard():
                time=(int(rangeArray[0]), int(rangeArray[1])),
                option='keys', shape=False)
 
-def exportAnimation():
 
     # クリップボードからアニメーションを取り出す
     clipboard = oma.MAnimCurveClipboard.theAPIClipboard
@@ -29,76 +35,14 @@ def exportAnimation():
     animData = dict()
     animData['animData'] = []
 
-    # アニメカーブに１つずつアクセス
-    for i in range(len(clipboardArray)):
-        clipboardItem = clipboardArray[i]
-        animCurveObj = clipboardItem.animCurve
-        animCurve = oma.MFnAnimCurve(animCurveObj)
-
-        # クリップボード再登録時に必要な情報と、アニメカーブ固有の情報
-        addr = clipboardItem.getAddressingInfo()
-        animData['animData'].append({'addrInfo':[addr[0], addr[1], addr[2]],
-                                     'nodeName':clipboardItem.nodeName,
-                                     'fullName':clipboardItem.fullAttributeName,
-                                     'leafName':clipboardItem.leafAttributeName,
-                                     'curveType':animCurve.animCurveType,
-                                     'isWeight':animCurve.isWeighted,
-                                     'preInf':animCurve.preInfinityType,
-                                     'postInf':animCurve.postInfinityType,
-                                     'keyData':[],
-                                     'tangentData':[]})
-
-        # キー情報を取り出し
-        keyNum = animCurve.numKeys
-        for j in range(keyNum):
-
-            # タンジェントアングルとウエイトは戻り値が２つなので先に取り出す
-            ret = animCurve.getTangentAngleWeight(j, True)
-            inTangentAngle = ret[0].value
-            inTangentWeight = ret[1]
-            ret = animCurve.getTangentAngleWeight(j, False)
-            outTangentAngle = ret[0].value
-            outTangentWeight = ret[1]
-
-            # MFnAnimCurve.addKey()に必要な情報
-            keyData = [animCurve.input(j).value,
-                       animCurve.value(j),
-                       animCurve.inTangentType(j),
-                       animCurve.outTangentType(j)]
-
-            # それ以外のタンジェント等の情報
-            tangentData = [inTangentAngle,
-                           inTangentWeight,
-                           outTangentAngle,
-                           outTangentWeight,
-                           animCurve.tangentsLocked(j),
-                           animCurve.weightsLocked(j),
-                           animCurve.isBreakdown(j)]
-
-            animData['animData'][-1]['keyData'].append(keyData)
-            animData['animData'][-1]['tangentData'].append(tangentData)
-
-    # Jsonデータとして書き出し
-    jsonPath = 'C:/Users/0300091280/Desktop/hoge.json'
-    if not (mc.file(jsonPath, query=True, exists=True)):
-        jsonFile = open(jsonPath, 'w', os.O_CREAT)
-    else:
-        jsonFile = open(jsonPath, 'w')
-    json.dump(animData, jsonFile)
-    print animData
-
-def exportAnimation2():
-
-    # クリップボードからアニメーションを取り出す
-    clipboard = oma.MAnimCurveClipboard.theAPIClipboard
-    clipboardArray = clipboard.clipboardItems()
-
-    animData = dict()
-    animData['animData'] = []
+    # progress bar
+    gMainProgressBar = mm.eval('$tmp = $gMainProgressBar')
+    mc.progressBar(gMainProgressBar, edit=True, beginProgress=True,
+        isInterruptable=False, status='Export Animation Clipboard ...',
+	    maxValue=len(clipboardArray))
 
     # アニメカーブに１つずつアクセス
-    for i in range(len(clipboardArray)):
-        clipboardItem = clipboardArray[i]
+    for clipboardItem in clipboardArray:
         animCurveObj = clipboardItem.animCurve
         animCurve = oma.MFnAnimCurve(animCurveObj)
 
@@ -114,15 +58,14 @@ def exportAnimation2():
                                      'postInf':animCurve.postInfinityType,
                                      'keyData':{}})
 
-        # キー情報を取り出し
+        # キー情報の取り出し
         d = {'times':[], 'values':[],
              'inTangentType':[], 'outTangentType':[],
              'inTangentX':[], 'inTangentY':[],
              'outTangentX':[],'outTangentY':[],
              'tangentLock':[], 'weightLock':[]}
 
-        keyNum = animCurve.numKeys
-        for j in range(keyNum):
+        for j in range(animCurve.numKeys):
             d['times'].append(animCurve.input(j).value)
             d['values'].append(animCurve.value(j))
             d['inTangentType'].append(animCurve.inTangentType(j))
@@ -139,45 +82,39 @@ def exportAnimation2():
 
         animData['animData'][-1]['keyData'] = d
 
+        # update progress bar
+        mc.progressBar(gMainProgressBar, edit=True, step=1)
+
     # Jsonデータとして書き出し
     jsonPath = 'C:/Users/0300091280/Desktop/hoge.json'
-    if not (mc.file(jsonPath, query=True, exists=True)):
-        jsonFile = open(jsonPath, 'w', os.O_CREAT)
-    else:
-        jsonFile = open(jsonPath, 'w')
-    json.dump(animData, jsonFile)
-    print animData
 
-def copyAnimation():
-    '''選択されたオブジェクトのアニメーションをクリップボードにコピーし、
-    一時ファイルに書き出す。
-    時間の選択はタイムスライダーで行う。
-    時間を選択していない場合はカレントフレームが対象。
-    '''
-    copyClipboard()
-    exportAnimation()
+    with open(jsonPath, 'w') as jsonFile:
+        json.dump(animData, jsonFile)
 
-def copyAnimation2():
-    '''選択されたオブジェクトのアニメーションをクリップボードにコピーし、
-    一時ファイルに書き出す。
-    時間の選択はタイムスライダーで行う。
-    時間を選択していない場合はカレントフレームが対象。
-    '''
-    copyClipboard()
-    exportAnimation2()
+    # close progress bar
+    mc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+
 
 def pasteAnimation():
+    start = time.time()
 
     # Jsonデータの読み込み
     jsonPath = 'C:/Users/0300091280/Desktop/hoge.json'
-    jsonData = open(jsonPath, 'r')
-    animData =json.load(jsonData)
+
+    with open(jsonPath, 'r') as jsonFile:
+        animData =json.load(jsonFile)
 
     clipboard = oma.MAnimCurveClipboard.theAPIClipboard
     clipboard.clear()
     clipItems = list()
 
-    # アニメ情報を読み込んでMFnAnimCurveを作り、クリップボードに格納していく。
+    # progress bar
+    gMainProgressBar = mm.eval('$tmp = $gMainProgressBar')
+    mc.progressBar(gMainProgressBar, edit=True, beginProgress=True,
+        isInterruptable=False, status='Import Animation Clipboard ...',
+	    maxValue=len(animData['animData']))
+
+    # アニメ情報を読み込んでMFnAnimCurveを作り、クリップボードに格納する。
     for curveData in animData['animData']:
 
         # カーブタイプを取り出し、MFnAnimCurveを作る。
@@ -190,20 +127,21 @@ def pasteAnimation():
         animCurve.setPreInfinityType(curveData['preInf'])
         animCurve.setPostInfinityType(curveData['postInf'])
 
-        for keyData in curveData['keyData']:
-            #print keyData
-            animCurve.addKey(om.MTime(keyData[0]), om.MTime(keyData[1]),
-                             keyData[2], keyData[3])
-        for i, tangentData in enumerate(curveData['tangentData']):
-            #print i, tangentData
-            animCurve.setAngle(i, om.MAngle(tangentData[0]), True)
-            animCurve.setWeight(i, tangentData[1], True)
-            animCurve.setAngle(i, om.MAngle(tangentData[2]), False)
-            animCurve.setWeight(i, tangentData[3], False)
-            animCurve.setTangentsLocked(i, tangentData[4])
-            animCurve.setWeightsLocked(i, tangentData[5])
-            animCurve.setIsBreakdown(i, tangentData[6])
-        
+        # キー情報を一気に流し込む
+        animCurve.addKeysWithTangents(curveData['keyData']['times'],
+            curveData['keyData']['values'],
+            oma.MFnAnimCurve.kTangentGlobal,
+            oma.MFnAnimCurve.kTangentGlobal,
+            curveData['keyData']['inTangentType'],
+            curveData['keyData']['outTangentType'],
+            curveData['keyData']['inTangentX'],
+            curveData['keyData']['inTangentY'],
+            curveData['keyData']['outTangentX'],
+            curveData['keyData']['outTangentY'],
+            curveData['keyData']['tangentLock'],
+            curveData['keyData']['weightLock'])
+
+        # クリップボードアイテムに登録する
         clipboardItem = oma.MAnimCurveClipboardItem()
         clipboardItem.setAddressingInfo(curveData['addrInfo'][0],
                                         curveData['addrInfo'][1],
@@ -214,64 +152,13 @@ def pasteAnimation():
         clipboardItem.setAnimCurve(animCurveObj)
         clipItems.append(clipboardItem)
 
+        # update progress bar
+        mc.progressBar(gMainProgressBar, edit=True, step=1)
+
+
+    # クリップボードに登録し、ペーストを実行する。
     clipboard.set(clipItems)
     mc.pasteKey(clipboard='api')
-    '''
-    mc.pasteKey('locator2', clipboard='api', animation='objects', connect=False,
-                option='replace')
-    '''
 
-def pasteAnimation2():
-
-    # Jsonデータの読み込み
-    jsonPath = 'C:/Users/0300091280/Desktop/hoge.json'
-    jsonData = open(jsonPath, 'r')
-    animData =json.load(jsonData)
-
-    clipboard = oma.MAnimCurveClipboard.theAPIClipboard
-    clipboard.clear()
-    clipItems = list()
-
-    # アニメ情報を読み込んでMFnAnimCurveを作り、クリップボードに格納していく。
-    for curveData in animData['animData']:
-
-        # カーブタイプを取り出し、MFnAnimCurveを作る。
-        curveType = curveData['curveType']
-        animCurve = oma.MFnAnimCurve()
-        animCurveObj = animCurve.create(curveType)
-
-        # カーブ固有の情報をセット
-        animCurve.setIsWeighted(curveData['isWeight'])
-        animCurve.setPreInfinityType(curveData['preInf'])
-        animCurve.setPostInfinityType(curveData['postInf'])
-
-        for keyData in curveData['keyData']:
-            #print keyData
-            animCurve.addKey(om.MTime(keyData[0]), om.MTime(keyData[1]),
-                             keyData[2], keyData[3])
-        for i, tangentData in enumerate(curveData['tangentData']):
-            #print i, tangentData
-            animCurve.setAngle(i, om.MAngle(tangentData[0]), True)
-            animCurve.setWeight(i, tangentData[1], True)
-            animCurve.setAngle(i, om.MAngle(tangentData[2]), False)
-            animCurve.setWeight(i, tangentData[3], False)
-            animCurve.setTangentsLocked(i, tangentData[4])
-            animCurve.setWeightsLocked(i, tangentData[5])
-            animCurve.setIsBreakdown(i, tangentData[6])
-        
-        clipboardItem = oma.MAnimCurveClipboardItem()
-        clipboardItem.setAddressingInfo(curveData['addrInfo'][0],
-                                        curveData['addrInfo'][1],
-                                        curveData['addrInfo'][2])
-        clipboardItem.setNameInfo(curveData['nodeName'],
-                                  curveData['fullName'],
-                                  curveData['leafName'])
-        clipboardItem.setAnimCurve(animCurveObj)
-        clipItems.append(clipboardItem)
-
-    clipboard.set(clipItems)
-    mc.pasteKey(clipboard='api')
-    '''
-    mc.pasteKey('locator2', clipboard='api', animation='objects', connect=False,
-                option='replace')
-    '''
+    # close progress bar
+    mc.progressBar(gMainProgressBar, edit=True, endProgress=True)
