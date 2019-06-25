@@ -153,9 +153,15 @@ def pasteAnimation():
         # update progress bar
         mc.progressBar(gMainProgressBar, edit=True, step=1)
 
-    # クリップボードに登録し、ペーストを実行する。
+    # クリップボードに登録
     clipboard.set(clipItems)
-    mc.pasteKey(clipboard='api')
+
+    # タイムスライダーで選択されている時間を取得
+    aPlayBackSliderPython = mm.eval('$tmpVar=$gPlayBackSlider')
+    rangeArray = mc.timeControl(aPlayBackSliderPython, q=True, rangeArray=True)
+
+    mc.pasteKey(clipboard='api', time=(rangeArray[0], rangeArray[0]),
+                option='insert')
 
     # close progress bar
     mc.progressBar(gMainProgressBar, edit=True, endProgress=True)
