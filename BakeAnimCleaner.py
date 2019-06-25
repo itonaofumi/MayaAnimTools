@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import maya.cmds as cmds
  
 origin = cmds.ls(selection=True)[0]
