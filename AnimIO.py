@@ -6,7 +6,6 @@ import maya.api.OpenMayaAnim as oma
 
 import json
 import math
-import time
 
 
 def copyAnimation():
@@ -96,7 +95,6 @@ def copyAnimation():
 
 
 def pasteAnimation():
-    start = time.time()
 
     # Jsonデータの読み込み
     jsonPath = 'C:/Users/0300091280/Desktop/hoge.json'
@@ -154,7 +152,6 @@ def pasteAnimation():
 
         # update progress bar
         mc.progressBar(gMainProgressBar, edit=True, step=1)
-
 
     # クリップボードに登録し、ペーストを実行する。
     clipboard.set(clipItems)
