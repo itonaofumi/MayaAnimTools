@@ -179,3 +179,20 @@ def pasteAnimation():
 
     # close progress bar
     mc.progressBar(gMainProgressBar, edit=True, endProgress=True)
+    
+    '''TODO
+    ビューポートでドラッグして選択するとselectedItemsの順番が不定となる。
+    結果ペースト時にまったく違うノードにアニメがコピーされてしまう。
+    
+    例えばcurveData['nodeName']の重複を取り除いたリストを作り、
+    その順番でselectedItemsをソートしてからペーストすれば、
+    同名のノードにアニメがペーストできるかもしれない。
+    
+    以下は重複を取り除くコード例
+    nodeNames = []
+    for clipboardItem in clipboardArray:
+        nodeNames.append(clipboardItem.nodeName)
+    nodeNames = sorted(set(nodeNames), key=nodeNames.index)
+    for i in nodeNames:
+        print i
+    '''
