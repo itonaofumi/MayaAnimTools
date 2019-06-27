@@ -7,6 +7,7 @@ import maya.api.OpenMayaAnim as oma
 
 import json
 import math
+import re
 
 def copyAnimation():
     '''選択されたオブジェクトのアニメーションをクリップボードにコピーし、
@@ -215,9 +216,9 @@ def pasteAnimation():
     isNameMatched = False
 
     for cItem in clipboardItemNames:
-        cItemSplit = cItem.rsplit(':', 1)
+        cItemSplit = re.split('[:|]', cItem)
         for sItem in selectedItems:
-            sItemSplit = sItem.rsplit(':', 1)
+            sItemSplit = re.split('[:|]]', sItem)
             if cItemSplit[-1] == sItemSplit[-1]:
                 newSelectionList.append(sItem)
                 isNameMatched = True
@@ -239,13 +240,13 @@ def pasteAnimation():
         selectedItems = mc.ls(selection=True)
         sItemSplit =[]
         for selectedItem in selectedItems:
-            sItemSplit.append(selectedItem.rsplit(':', 1)[-1])
+            sItemSplit.append(re.split('[:|]', selectedItem)[-1])
 
         # クリップボード内のノード名のリスト化
         cItemSplit = []
         for clipboardItem in clipboardArray:
             cNodeName = clipboardItem.nodeName
-            cItemSplit.append(cNodeName.rsplit(':', 1)[-1])
+            cItemSplit.append(re.split('[:|]', cNodeName)[-1])
 
         # 再選択したノード名がクリップボード内に存在するか調べ、
         # 存在している＝消さないインデックスのリストを作る
