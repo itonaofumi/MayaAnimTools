@@ -216,9 +216,9 @@ def pasteAnimation():
     isNameMatched = False
 
     for cItem in clipboardItemNames:
-        cItemSplit = re.split('[:|]', cItem)
+        cItemSplit = re.split('[:\|]', cItem)
         for sItem in selectedItems:
-            sItemSplit = re.split('[:|]]', sItem)
+            sItemSplit = re.split('[:\|]', sItem)
             if cItemSplit[-1] == sItemSplit[-1]:
                 newSelectionList.append(sItem)
                 isNameMatched = True
@@ -240,13 +240,13 @@ def pasteAnimation():
         selectedItems = mc.ls(selection=True)
         sItemSplit =[]
         for selectedItem in selectedItems:
-            sItemSplit.append(re.split('[:|]', selectedItem)[-1])
+            sItemSplit.append(re.split('[:\|]', selectedItem)[-1])
 
         # クリップボード内のノード名のリスト化
         cItemSplit = []
         for clipboardItem in clipboardArray:
             cNodeName = clipboardItem.nodeName
-            cItemSplit.append(re.split('[:|]', cNodeName)[-1])
+            cItemSplit.append(re.split('[:\|]', cNodeName)[-1])
 
         # 再選択したノード名がクリップボード内に存在するか調べ、
         # 存在している＝消さないインデックスのリストを作る
