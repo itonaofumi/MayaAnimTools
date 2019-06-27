@@ -47,27 +47,30 @@ def copyAnimation():
         try:
             animCurve.animCurveType  # アニメカーブがあるかチェック
         except:
-            print '{0} has no animation curve.'.format(clipboardItem.nodeName)
+            pass
+            #print '{0} has no animation curve.'.format(clipboardItem.nodeName)
         else:
             # クリップボード再登録時に必要な情報と、アニメカーブ固有の情報を取得。
             addr = clipboardItem.getAddressingInfo()
-            animData['animData'].append({'addrInfo':[addr[0], addr[1], addr[2]],
-                                        'nodeName':clipboardItem.nodeName,
-                                        'fullName':clipboardItem.fullAttributeName,
-                                        'leafName':clipboardItem.leafAttributeName,
-                                        'curveType':animCurve.animCurveType,
-                                        'isWeight':animCurve.isWeighted,
-                                        'preInf':animCurve.preInfinityType,
-                                        'postInf':animCurve.postInfinityType,
-                                        'keyData':{}})
+            animData['animData'].append({
+                'addrInfo':[addr[0], addr[1], addr[2]],
+                'nodeName':clipboardItem.nodeName,
+                'fullName':clipboardItem.fullAttributeName,
+                'leafName':clipboardItem.leafAttributeName,
+                'curveType':animCurve.animCurveType,
+                'isWeight':animCurve.isWeighted,
+                'preInf':animCurve.preInfinityType,
+                'postInf':animCurve.postInfinityType,
+                'keyData':{}
+            })
 
             # キー情報の取り出し
             d = {'times':[], 'values':[],
-                'inTangentType':[], 'outTangentType':[],
-                'inTangentX':[], 'inTangentY':[],
-                'outTangentX':[],'outTangentY':[],
-                'tangentLock':[], 'weightLock':[],
-                'breakdown':[]}
+                 'inTangentType':[], 'outTangentType':[],
+                 'inTangentX':[], 'inTangentY':[],
+                 'outTangentX':[],'outTangentY':[],
+                 'tangentLock':[], 'weightLock':[],
+                 'breakdown':[]}
 
             for j in range(animCurve.numKeys):
                 d['times'].append(animCurve.input(j).asUnits(om.MTime.k30FPS))
@@ -118,10 +121,6 @@ def pasteAnimation():
         isInterruptable=False, status='Import Animation Clipboard ...',
 	    maxValue=len(animData['animData']))
     
-    # ペースト時にクリップボードに格納されているノード名と選択されているノード名
-    # との文字列比較を行うので、クリップボードのノード名を格納しておく。
-    clipboardItemNames = []
-
     # アニメ情報を読み込んでMFnAnimCurveを作り、クリップボードに格納する。
     for curveData in animData['animData']:
 
@@ -135,7 +134,7 @@ def pasteAnimation():
         animCurve.setPreInfinityType(curveData['preInf'])
         animCurve.setPostInfinityType(curveData['postInf'])
 
-        # キー情報を一気に流し込む
+        # 先に時間情報を30FPS換算に変換しておく
         convTime = [om.MTime(x, om.MTime.k30FPS) for x in curveData['keyData']['times']]
 
         '''上でやってるのはこの処理
@@ -151,6 +150,7 @@ def pasteAnimation():
             convTime[i] = mTime
         '''
 
+        # キー情報を一気に流し込む
         animCurve.addKeysWithTangents(convTime, #curveData['keyData']['times'],
             curveData['keyData']['values'],
             oma.MFnAnimCurve.kTangentAuto,
@@ -186,41 +186,102 @@ def pasteAnimation():
         clipboardItem.setAnimCurve(animCurveObj)
         clipItems.append(clipboardItem)
 
-        clipboardItemNames.append(curveData['nodeName'])
-
         # update progress bar
         mc.progressBar(gMainProgressBar, edit=True, step=1)
 
     # クリップボードに登録
     clipboard.set(clipItems)
 
-    # クリップボードの内の重複したノード名を削除する
+    # ペースト時にクリップボードに格納されているノード名と選択されているノード名
+    # との文字列比較を行うので、まずクリップボードのノード名を取り出す。
+    clipboardArray = clipboard.clipboardItems()
+    clipboardItemNames = []
+    for clipboardItem in clipboardArray:
+        clipboardItemNames.append(clipboardItem.nodeName)
+
+    # 順番はそのままで、重複したノード名を削除する
     clipboardItemNames = sorted(set(clipboardItemNames),
                                 key=clipboardItemNames.index)
+    '''
+    print '---clipboard item list---'
+    for i in clipboardItemNames: print i
+    '''
 
     # クリップボードに含まれたノード名と選択されたノード名で文字列比較を行い、
     # 同じノード名があったら新しい選択リストに登録する。
+    # これでクリップボードと同じ順番で再選択できる。
     selectedItems = mc.ls(selection=True)
-    isNameMatched = False
     newSelectionList = []
+    isNameMatched = False
 
-    for citem in clipboardItemNames:
-        citemSplit = citem.rsplit(':', 1)
-        for sitem in selectedItems:
-            sitemSplit = sitem.rsplit(':',)
-            if citemSplit[-1] == sitemSplit[-1]:
+    for cItem in clipboardItemNames:
+        cItemSplit = cItem.rsplit(':', 1)
+        for sItem in selectedItems:
+            sItemSplit = sItem.rsplit(':', 1)
+            if cItemSplit[-1] == sItemSplit[-1]:
+                newSelectionList.append(sItem)
                 isNameMatched = True
-                newSelectionList.append(sitem)
                 break
+    '''
+    print '---newSelecton item list---'
+    for i in newSelectionList: print i
+    '''
+
+    # マッチしたノード名があった場合、クリップボード順になったリストで選択しなおす。
+    # その後、再選択したノード名とクリップボード内のノード名をもう一度比較し、
+    # クリップボードにだけ存在するノード名の要素を削除する。
+    # これをしないと順番が完全に合わない。めんどくさい。
+    if isNameMatched:
+        mc.select(clear=True)
+        mc.select(newSelectionList)
+
+        # 再選択したノード名のリスト化
+        selectedItems = mc.ls(selection=True)
+        sItemSplit =[]
+        for selectedItem in selectedItems:
+            sItemSplit.append(selectedItem.rsplit(':', 1)[-1])
+
+        # クリップボード内のノード名のリスト化
+        cItemSplit = []
+        for clipboardItem in clipboardArray:
+            cNodeName = clipboardItem.nodeName
+            cItemSplit.append(cNodeName.rsplit(':', 1)[-1])
+
+        # 再選択したノード名がクリップボード内に存在するか調べ、
+        # 存在している＝消さないインデックスのリストを作る
+        keepIndex = []
+        for s in sItemSplit:
+            for i, c in enumerate(cItemSplit):
+                if s == c:
+                    keepIndex.append(i)
+        # print 'keepIndex', keepIndex
+
+        # keepIndexの要素数とクリップボードの要素数を比較し、
+        # 異なった場合は消す対象が存在するということになる。
+        delIndex = list(range(len(cItemSplit)))
+
+        if len(keepIndex) != len(delIndex):
+            delIndex = list(set(delIndex) - set(keepIndex))
+            # print 'deleteIndex', delIndex
+
+            for i in reversed(delIndex):
+                clipboardArray.remove(i)
+
+        # debug クリップボードの中を再確認
+        '''
+        for clipboardItem in clipboardArray:
+            animCurveObj = clipboardItem.animCurve
+            animCurve = oma.MFnAnimCurve(animCurveObj)
+            print clipboardItem.nodeName, clipboardItem.leafAttributeName, animCurve.value(0)
+        print mc.ls(selection=True)
+        '''
+        
+        # いじったclipboardArrayを再度クリップボードにセット
+        clipboard.set(clipboardArray)
 
     # タイムスライダーで選択されている時間を取得
     aPlayBackSliderPython = mm.eval('$tmpVar=$gPlayBackSlider')
     rangeArray = mc.timeControl(aPlayBackSliderPython, q=True, rangeArray=True)
-
-    # マッチしたノード名があった場合、そのノード名で選択しなおす
-    if isNameMatched:
-        mc.select(clear=True)
-        mc.select(newSelectionList)
 
     # 選択されたノードに対してペーストを実行
     mc.pasteKey(clipboard='api', time=(rangeArray[0], rangeArray[0]),
