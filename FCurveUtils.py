@@ -3,16 +3,16 @@
 import maya.cmds as cmds
 
 def cleanBakeAnim():
-    origin = cmds.ls(selection=True)[0]
-    baked = cmds.ls(selection=True)[1]
+    originNode = cmds.ls(selection=True)[0]
+    bakedNode = cmds.ls(selection=True)[1]
     
-    # 処理対象のアトリビュート
-    attrList = ['.translateX', '.translateY', '.translateZ', '.rotateX', '.rotateY', '.rotateZ']
+    targetAttr = ['.translateX', '.translateY', '.translateZ',
+                  '.rotateX', '.rotateY', '.rotateZ']
     
-    for attr in attrList:
+    for attr in targetAttr:
     
         # キーの打ってあるフレームを取得
-        nodeName = origin + attr
+        nodeName = originNode + attr
         keyTimes = cmds.keyframe(nodeName, query=True)
     
         # 処理対象の全フレームの数値をリスト化
@@ -22,22 +22,22 @@ def cleanBakeAnim():
         delList = list(set(timeList) - set(keyTimes));
     
         # キーを削除
-        nodeName = baked + attr
+        nodeName = bakedNode + attr
         for f in delList:
             cmds.cutKey(nodeName, time=(f, f), cl=1);
 
 def curveOffset():
-    flameA = 0  # 基準index
-    flameB = 1  # オフセット開始index
+    indexA = 0  # 基準index
+    indexB = 1  # オフセット開始index
     
     # 選択したノードが持つアニメカーブ名を取得
-    curves = cmds.keyframe(query=True, name=True)
+    curveNames = cmds.keyframe(query=True, name=True)
     
     # 基準フレーム（以下A）、オフセットを始めるフレーム（以下B）それぞれの値を取得
-    valueA = cmds.keyframe(curves, query=True, valueChange=True,
-                           index=(flameA, flameA))
-    valueB = cmds.keyframe(curves, query=True, valueChange=True,
-                           index=(flameB, flameB))
+    valueA = cmds.keyframe(curveNames, query=True, valueChange=True,
+                           index=(indexA, indexA))
+    valueB = cmds.keyframe(curveNames, query=True, valueChange=True,
+                           index=(indexB, indexB))
     
     # 各カーブのAの値からBの値を引き、オフセット値を求める
     offsetValue = []
@@ -45,7 +45,7 @@ def curveOffset():
         offsetValue.append(valueA[i] - valueB[i])
     
     # Bから最終フレームまで、オフセット値を足していく
-    for i in xrange(len(curves)):
-        keyCount = cmds.keyframe(curves[i], query=True, kc=True)
-        cmds.keyframe(curves[i], edit=True, index=(flameB, keyCount),
+    for i in xrange(len(curveNames)):
+        keyCount = cmds.keyframe(curveNames[i], query=True, kc=True)
+        cmds.keyframe(curveNames[i], edit=True, index=(indexB, keyCount),
                       valueChange=offsetValue[i], relative=True)
