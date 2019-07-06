@@ -12,8 +12,8 @@ def cleanBakeAnim():
     for attr in targetAttr:
     
         # キーの打ってあるフレームを取得
-        nodeName = originNode + attr
-        keyTimes = cmds.keyframe(nodeName, query=True)
+        nodeAttr = originNode + attr
+        keyTimes = cmds.keyframe(nodeAttr, query=True)
     
         # 処理対象の全フレームの数値をリスト化
         timeList = range(int(min(keyTimes)), int(max(keyTimes)));
@@ -22,24 +22,25 @@ def cleanBakeAnim():
         delList = list(set(timeList) - set(keyTimes));
     
         # キーを削除
-        nodeName = bakedNode + attr
+        nodeAttr = bakedNode + attr
         for f in delList:
-            cmds.cutKey(nodeName, time=(f, f), cl=1);
+            cmds.cutKey(nodeAttr, time=(f, f), cl=1);
 
 def curveOffset():
-    indexA = 0  # 基準index
-    indexB = 1  # オフセット開始index
     
     # 選択したノードが持つアニメカーブ名を取得
     curveNames = cmds.keyframe(query=True, name=True)
+
+    indexA = 0  # 基準index
+    indexB = 1  # オフセット開始index
     
-    # 基準フレーム（以下A）、オフセットを始めるフレーム（以下B）それぞれの値を取得
+    # 基準フレーム、オフセットを始めるフレームそれぞれの値を取得
     valueA = cmds.keyframe(curveNames, query=True, valueChange=True,
                            index=(indexA, indexA))
     valueB = cmds.keyframe(curveNames, query=True, valueChange=True,
                            index=(indexB, indexB))
     
-    # 各カーブのAの値からBの値を引き、オフセット値を求める
+    # オフセット値を求める
     offsetValue = []
     for i in xrange(len(valueA)):
         offsetValue.append(valueA[i] - valueB[i])
