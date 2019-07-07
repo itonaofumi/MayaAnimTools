@@ -6,7 +6,6 @@ import maya.api.OpenMaya as om
 import os
 import csv
 
-
 def exportMarkers():
     # 出力するマーカーを選択してから実行する
 
@@ -32,6 +31,7 @@ def exportMarkers():
             transx = cmds.getAttr(item + '.tx')
             transy = cmds.getAttr(item + '.ty')
             transz = cmds.getAttr(item + '.tz')
+
             animList.append(transx)
             animList.append(transy)
             animList.append(transz)
@@ -39,7 +39,6 @@ def exportMarkers():
         writer.writerow(animList)
 
     csvFile.close()
-
 
 def exportMatrix(): 
 
@@ -120,7 +119,6 @@ def exportMatrix():
     # 描画再開
     cmds.refresh(suspend=False)
     cmds.refresh(force=True)
-
 
 def importMatrix():
 
