@@ -54,7 +54,7 @@ class CurveFitter(QWidget):
         self.setLayout(mainLayout)
  
     # 選択したカーブのインデックス、時間、値を返す
-    def getCurveInfo(self, curves):
+    def getCurveData(self, curves):
         indexs = list()
         times = list()
         values = list()
@@ -65,11 +65,12 @@ class CurveFitter(QWidget):
                                            index=(indexs[i][0], indexs[i][-1])))
         return indexs, times, values
 
-    # ２点を通る直線の方程式を使って直線を求める。
-    # mode: 0 最初と最後のキーをつないだ直線
-    # mode: 1 ２番目と最後のキーをつないだ直線
-    # mode: 2 最初と最後の１つ前のキーをつないだ直線
     def startEndLine(self, keyTimes, keyValues, mode):
+        ''' ２点を通る直線の方程式を使い、直線だった場合の各キーの値を求める。
+        mode: 0 最初と最後のキーをつないだ直線
+        mode: 1 ２番目と最後のキーをつないだ直線
+        mode: 2 最初と最後の１つ前のキーをつないだ直線
+        '''
         lineList = list()
  
         for i in xrange(len(keyValues)):
@@ -101,8 +102,8 @@ class CurveFitter(QWidget):
       
         return lineList
  
-    # 各キーの時間における、直線との差分を求める。
-    def diffFromLine(self, lineList, keyValues):
+    # 各キーの時間において、直線との差分を求める。
+    def diffFromLine(keyValues, self, lineList):
         diffList = list()
  
         for i in xrange(len(keyValues)):
@@ -141,7 +142,7 @@ class CurveFitter(QWidget):
         curves = cmds.keyframe(query=True, name=True)
  
         # 選択されているキーのインデックス、時間、値を取得
-        keyIds, keyTimes, keyValues = self.getCurveInfo(curves)
+        keyIds, keyTimes, keyValues = self.getCurveData(curves)
  
         # modeに応じて直線を求める
         if mode == 0:
@@ -150,7 +151,7 @@ class CurveFitter(QWidget):
             lineList = self.startEndLine(keyTimes, keyValues, 2)
  
         # 直線との差分を求める
-        diffList = self.diffFromLine(lineList, keyValues)
+        diffList = self.diffFromLine(keyValues, lineList)
          
         # 最初と最後のキーをつないだ直線を求める
         lineList = self.startEndLine(keyTimes, keyValues, 0)
